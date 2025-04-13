@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>VoIP Video Call with Screen Sharing</title>
+  <style>
+    video { width: 45%; margin: 10px; border: 2px solid #333; }
+    #controls { margin: 20px; }
+  </style>
+</head>
+<body>
+  <h2>VoIP Video Call with Screen & YouTube Sharing</h2>
+  <div>
+    <video id="localVideo" autoplay muted></video>
+    <video id="remoteVideo" autoplay></video>
+  </div>
+
+  <div id="controls">
+    <button onclick="startCall()">Start Call</button>
+    <button onclick="shareScreen()">Share Screen (YouTube)</button>
+    <button onclick="startRecording()">Start Recording</button>
+    <button onclick="stopRecording()">Stop Recording</button>
+  </div>
+
+  <script>
+    let localStream;
+    let remoteStream;
+    let peerConnection;
+    let mediaRecorder;
+    let recordedChunks = [];
+
+    const servers = {
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    };
+
+    const localVideo = document.getElementById('localVideo');
+    const remoteVideo = document.getElementById('remoteVideo');
+
+    async function startCall() {
+      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      localVideo.srcObject = localStream;
+
+      peerConnection = new RTCPeerConnection(servers);
+
+      localStream.getTracks().forEach(track => {
+        peerConnection.addTrack(track, localStream);
+      });
+
+      peerConnection.ontrack = event => {
+        [remoteStream] = event.streams;
+        remoteVideo.srcObject = remoteStream;
+      };
+
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+
+      // For demo: echo call (simulate remote answer)
+      peerConnection.onicecandidate = async e => {
+        if (e.candidate) return;
+        const answerPC = new RTCPeerConnection(servers);
+        answerPC.ontrack = e => {
+          remoteVideo.srcObject = e.streams[0];
+        };
+        answerPC.onicecandidate = e => {
+          if (e.candidate) return;
+          peerConnection.setRemoteDescription(answerPC.localDescription);
+        };
+        localStream.getTracks().forEach(t => answerPC.addTrack(t, localStream));
+        await answerPC.setRemoteDescription(peerConnection.localDescription);
+        const answer = await answerPC.createAnswer();
+        await answerPC.setLocalDescription(answer);
+        peerConnection.setRemoteDescription(answer);
+      };
+    }
+
+    async function shareScreen() {
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      const screenTrack = screenStream.getVideoTracks()[0];
+
+      const sender = peerConnection.getSenders().find(s => s.track.kind === 'video');
+      sender.replaceTrack(screenTrack);
+
+      screenTrack.onended = () => {
+        sender.replaceTrack(localStream.getVideoTracks()[0]);
+      };
+    }
+
+    function startRecording() {
+      const combinedStream = new MediaStream([...localStream.getTracks()]);
+      mediaRecorder = new MediaRecorder(combinedStream);
+      mediaRecorder.ondataavailable = e => recordedChunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'session_recording.webm';
+        a.click();
+      };
+      mediaRecorder.start();
+    }
+
+    function stopRecording() {
+      mediaRecorder.stop();
+    }
+  </script>
+</body>
+</html>

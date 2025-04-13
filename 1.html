@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Group Management</title>
+  <style>
+    body { font-family: Arial; padding: 20px; background: #f4f4f4; }
+    .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 10px; }
+    input, button, textarea { width: 100%; padding: 10px; margin-top: 10px; }
+    .group { background: #e0e0e0; padding: 10px; margin: 10px 0; border-radius: 5px; }
+    .group h3 { margin: 0 0 5px 0; }
+    .group small { display: block; margin-top: 5px; color: #333; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>Create Group</h2>
+  <input type="text" id="groupName" placeholder="Group Name">
+  <textarea id="groupMembers" placeholder="Enter members, separated by commas"></textarea>
+  <button onclick="createGroup()">Create Group</button>
+
+  <h2>Search Groups</h2>
+  <input type="text" id="searchInput" onkeyup="searchGroups()" placeholder="Search groups...">
+
+  <h2>Groups</h2>
+  <div id="groupsList"></div>
+</div>
+
+<script>
+  let groups = [];
+
+  function createGroup() {
+    const name = document.getElementById('groupName').value.trim();
+    const members = document.getElementById('groupMembers').value.split(',').map(m => m.trim());
+
+    if (name && members.length) {
+      groups.push({ name, members });
+      document.getElementById('groupName').value = '';
+      document.getElementById('groupMembers').value = '';
+      renderGroups(groups);
+    }
+  }
+
+  function searchGroups() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const filteredGroups = groups.filter(g => g.name.toLowerCase().includes(searchTerm));
+    renderGroups(filteredGroups);
+  }
+
+  function renderGroups(list) {
+    const container = document.getElementById('groupsList');
+    container.innerHTML = '';
+
+    list.forEach(group => {
+      const div = document.createElement('div');
+      div.className = 'group';
+      div.innerHTML = 
+      container.appendChild(div);
+    });
+  }
+</script>
+
+</body>
+</html>
